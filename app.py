@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="M.A.R.V.I.S", layout="centered")
 
-# ===== STYLE (дорого, но без перегруза) =====
+# ===== STYLE  =====
 st.markdown("""
 <style>
 .stApp {background: radial-gradient(circle at center, #05070f, #01020a); color: white;}

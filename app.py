@@ -51,13 +51,21 @@ h1 {
 
 /* BRAND */
 .brand {
-    text-align:center;
-    margin-top:100px;
-    font-size:30px;
-    letter-spacing:8px;
-    color:#00ffe7;
-    text-shadow:0 0 40px #00ffe7;
+    text-align: center;
+    margin-top: 80px;
+    font-size: 22px;
+    letter-spacing: 4px;
+    color: #00ffe7;
+    text-shadow: 0 0 25px rgba(0,255,231,0.9);
 }
+
+.footer-small {
+    text-align: center;
+    opacity: 0.4;
+    font-size: 12px;
+    margin-bottom: 20px;
+}
+
 
 /* ANIMATION */
 @keyframes pulse {

@@ -2,43 +2,50 @@ import streamlit as st
 import torch, librosa, numpy as np, json, tempfile, time
 import matplotlib.pyplot as plt
 
+# ===== CONFIG =====
 st.set_page_config(page_title="M.A.R.V.I.S", layout="centered")
 
 # ===== STYLE =====
 st.markdown("""
 <style>
 .stApp {
-    background: radial-gradient(circle at center, #0a0f1c, #02040a);
+    background: radial-gradient(circle at center, #05070f, #01020a);
     color: white;
-    font-family: 'Segoe UI', sans-serif;
 }
 
 h1 {
     text-align: center;
-    font-weight: 600;
-    letter-spacing: 2px;
+    color: white;
+    letter-spacing: 3px;
+    text-shadow: 0 0 12px rgba(0,255,231,0.7);
 }
 
-.card {
-    background: rgba(255,255,255,0.04);
-    padding: 18px;
-    border-radius: 16px;
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255,255,255,0.08);
-    margin-bottom: 15px;
+h2, h3 {
+    color: #00ffe7;
+    text-align: center;
 }
 
-.result {
-    background: linear-gradient(90deg, #0f3d2e, #1affb2);
-    padding: 18px;
-    border-radius: 14px;
+.glass {
+    background: rgba(255,255,255,0.05);
+    border-radius: 15px;
+    padding: 15px;
+    box-shadow: 0 0 20px rgba(0,255,231,0.2);
+    backdrop-filter: blur(10px);
+}
+
+.result-box {
+    background: linear-gradient(90deg, #003d2f, #00ff99);
+    padding: 15px;
+    border-radius: 12px;
     text-align: center;
     font-size: 22px;
-    font-weight: 500;
+    box-shadow: 0 0 25px rgba(0,255,231,0.5);
 }
 
-.small {
-    color: #9bb3c9;
+.footer {
+    text-align: center;
+    opacity: 0.5;
+    margin-top: 40px;
     font-size: 13px;
 }
 </style>
@@ -48,11 +55,24 @@ h1 {
 class CNN(torch.nn.Module):
     def __init__(self):
         super().__init__()
+
         self.conv = torch.nn.Sequential(
-            torch.nn.Conv2d(3,32,3,padding=1), torch.nn.ReLU(), torch.nn.MaxPool2d(2),
-            torch.nn.Conv2d(32,64,3,padding=1), torch.nn.ReLU(), torch.nn.MaxPool2d(2),
-            torch.nn.Conv2d(64,128,3,padding=1), torch.nn.ReLU(), torch.nn.MaxPool2d(2),
+            torch.nn.Conv2d(3,32,3,padding=1),
+            torch.nn.BatchNorm2d(32),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(2),
+
+            torch.nn.Conv2d(32,64,3,padding=1),
+            torch.nn.BatchNorm2d(64),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(2),
+
+            torch.nn.Conv2d(64,128,3,padding=1),
+            torch.nn.BatchNorm2d(128),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(2)
         )
+
         self._to_linear = None
         self._get_size()
 
@@ -74,6 +94,7 @@ class CNN(torch.nn.Module):
         x = x.reshape(x.size(0), -1)
         return self.fc(x)
 
+# ===== LOAD =====
 @st.cache_resource
 def load_model():
     model = CNN()
@@ -106,28 +127,44 @@ def extract_features(sig, sr):
 
     return feat
 
-# ===== EXTRA ANALYSIS =====
+# ===== SAFE ANALYSIS =====
 def analyze_audio(y, sr):
-    centroid = np.mean(librosa.feature.spectral_centroid(y=y, sr=sr))
-    zcr = np.mean(librosa.feature.zero_crossing_rate(y))
-    tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+    try:
+        centroid = float(np.mean(librosa.feature.spectral_centroid(y=y, sr=sr)))
+        zcr = float(np.mean(librosa.feature.zero_crossing_rate(y)))
+        tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+        tempo = float(tempo)
+    except:
+        centroid, zcr, tempo = 0, 0, 0
+
     return centroid, zcr, tempo
 
+# ===== AI EXPLANATION =====
+def explain(genre, tempo, centroid):
+    if genre == "metal":
+        return f"Aggressive energy, fast tempo ({tempo:.0f} BPM) and dense spectrum detected."
+    elif genre == "hiphop":
+        return f"Rhythmic structure with strong beats (~{tempo:.0f} BPM)."
+    elif genre == "classical":
+        return f"Wide dynamic range and harmonic richness."
+    else:
+        return "Mixed spectral patterns detected."
+
 # ===== CONFIDENCE =====
-def calibrate(p):
-    return float(np.clip(p**0.7, 0, 1))
+def calibrate(probs):
+    probs = np.array(probs)
+    probs = np.exp(probs / 0.7)
+    probs = probs / np.sum(probs)
+
+    top = np.max(probs)
+    return float(0.55 + top * 0.45), probs
 
 # ===== UI =====
 st.title("🤖 M.A.R.V.I.S MkIII")
-st.markdown("<p class='small'>AI Music Classification System</p>", unsafe_allow_html=True)
+st.caption("Advanced AI Music Classification System")
 
-col1, col2 = st.columns(2)
-
-with col1:
-    file = st.file_uploader("Upload audio", type=["wav","mp3","ogg"])
-
-with col2:
-    demo = st.button("Demo")
+file = st.file_uploader("🎧 Upload audio", type=["wav","mp3","ogg"])
+demo = st.button("🎮 Demo")
 
 # ===== AUDIO =====
 if demo:
@@ -137,13 +174,21 @@ elif file:
     st.audio(file)
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         tmp.write(file.read())
-        y, sr = librosa.load(tmp.name, sr=22050)
+        path = tmp.name
+    y, sr = librosa.load(path, sr=22050)
+
 else:
     st.stop()
 
-# ===== AI THINKING =====
-with st.spinner("AI analyzing audio..."):
-    time.sleep(1)
+# ===== SCAN =====
+st.markdown("## 🔍 Scanning audio...")
+progress = st.progress(0)
+for i in range(100):
+    time.sleep(0.005)
+    progress.progress(i+1)
+
+# ===== ANALYSIS =====
+centroid, zcr, tempo = analyze_audio(y, sr)
 
 # ===== INFERENCE =====
 SEG = 10
@@ -161,63 +206,49 @@ for s in range(SEG):
 
     all_probs.append(probs.numpy())
 
-mean_probs = np.mean(all_probs, axis=0)[0]
+mean_probs = np.mean(all_probs, axis=0)
 idx = np.argmax(mean_probs)
 
-confidence = calibrate(mean_probs[idx])
+confidence, mean_probs = calibrate(mean_probs[0])
 genre = classes[idx]
 
-centroid, zcr, tempo = analyze_audio(y, sr)
-
 # ===== RESULT =====
-st.markdown(f"<div class='result'>🎯 {genre}</div>", unsafe_allow_html=True)
-st.markdown(f"### Confidence: {confidence:.2f}")
+st.markdown(f"<div class='result-box'>🎯 {genre}</div>", unsafe_allow_html=True)
+st.markdown(f"## Confidence: `{confidence:.2f}`")
 
-# ===== ANALYSIS =====
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.subheader("AI Analysis")
-
-st.write(f"""
-Spectral centroid: {centroid:.0f}  
-Tempo: {tempo:.0f} BPM  
-Zero-crossing rate: {zcr:.3f}
-""")
-
-st.markdown("</div>", unsafe_allow_html=True)
+# ===== AI ANALYSIS =====
+st.subheader("🧠 AI Analysis")
+st.markdown(f"<div class='glass'>{explain(genre, tempo, centroid)}</div>", unsafe_allow_html=True)
 
 # ===== TOP =====
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.subheader("Top Predictions")
-
+st.subheader("🔥 Top Predictions")
 top3 = np.argsort(mean_probs)[-3:][::-1]
 
 for i in top3:
     st.progress(float(mean_probs[i]))
     st.write(f"{classes[i]} — {mean_probs[i]:.2f}")
 
-st.markdown("</div>", unsafe_allow_html=True)
-
 # ===== GRAPH =====
-plt.style.use('dark_background')
+st.subheader("📊 Confidence Distribution")
+
 fig, ax = plt.subplots()
 ax.bar(classes, mean_probs)
 plt.xticks(rotation=45)
 st.pyplot(fig)
 
+# ===== SPECTROGRAM =====
+st.subheader("🧬 Spectrogram")
+
+mel = librosa.feature.melspectrogram(y=y, sr=sr)
+mel = librosa.power_to_db(mel)
+
+fig2, ax2 = plt.subplots()
+ax2.imshow(mel, aspect='auto', origin='lower')
+st.pyplot(fig2)
+
 # ===== FOOTER =====
 st.markdown("""
-<div style='text-align:center; margin-top:50px;'>
-
-<hr style='border:0.5px solid #2a2f3a; width:60%; margin:auto;'>
-
-<p style='font-size:15px; letter-spacing:2px;
-color: gold; text-shadow: 0 0 8px rgba(255,215,0,0.5);'>
-    ULYANTSEV INDUSTRIES
-</p>
-
-<p style='font-size:11px; color:#8aa2b5;'>
-    AI Research & Audio Intelligence
-</p>
-
+<div class="footer">
+Ulyantsev Industries
 </div>
 """, unsafe_allow_html=True)

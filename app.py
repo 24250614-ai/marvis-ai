@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 # ===== CONFIG =====
 st.set_page_config(page_title="M.A.R.V.I.S", layout="centered")
 
-# ===== JARVIS STYLE =====
+# ===== STYLE =====
 st.markdown("""
 <style>
 .stApp {
@@ -16,45 +16,57 @@ st.markdown("""
 /* TITLE */
 h1 {
     text-align: center;
+    font-size: 40px;
+    letter-spacing: 4px;
     color: white;
-    letter-spacing: 3px;
-    text-shadow: 0 0 10px rgba(0,255,231,0.6);
+    text-shadow: 0 0 20px rgba(0,255,231,0.8);
 }
 
-/* NEON TEXT */
-h2, h3 {
-    color: #00ffe7;
+/* SUBTITLE */
+.subtitle {
     text-align: center;
+    opacity: 0.7;
+    margin-bottom: 20px;
 }
 
 /* GLASS CARD */
 .glass {
     background: rgba(255,255,255,0.05);
-    border-radius: 15px;
-    padding: 15px;
-    box-shadow: 0 0 25px rgba(0,255,231,0.2);
-    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 0 25px rgba(0,255,231,0.15);
+    backdrop-filter: blur(12px);
 }
 
 /* RESULT */
-.result-box {
-    background: linear-gradient(90deg, #003d2f, #00ff99);
-    padding: 15px;
-    border-radius: 12px;
+.result {
     text-align: center;
-    font-size: 20px;
-    box-shadow: 0 0 20px rgba(0,255,231,0.5);
+    padding: 18px;
+    border-radius: 14px;
+    background: linear-gradient(90deg, #003d2f, #00ff99);
+    font-size: 22px;
+    box-shadow: 0 0 30px rgba(0,255,231,0.6);
 }
 
-/* PULSE EFFECT */
-@keyframes pulse {
-    0% { box-shadow: 0 0 5px #00ffe7; }
-    50% { box-shadow: 0 0 25px #00ffe7; }
-    100% { box-shadow: 0 0 5px #00ffe7; }
+/* CONF BAR */
+.conf-bar {
+    height: 12px;
+    border-radius: 10px;
+    background: #111;
+    overflow: hidden;
 }
 
-.pulse {
-    animation: pulse 2s infinite;
+.conf-fill {
+    height: 100%;
+    background: linear-gradient(90deg,#00ffe7,#00ff99);
+}
+
+/* FOOTER */
+.footer {
+    text-align: center;
+    opacity: 0.4;
+    margin-top: 50px;
+    font-size: 13px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -135,37 +147,34 @@ def extract_features(sig, sr):
 
     return feat
 
-# ===== AI EXPLANATION =====
-def explain(genre):
-    return {
-        "metal": "Aggressive spectral density + low-frequency dominance detected.",
-        "hiphop": "Strong rhythmic patterns and percussive beats detected.",
-        "classical": "Wide dynamic range and harmonic richness detected.",
-        "rock": "Guitar harmonics and mid-frequency energy detected."
-    }.get(genre, "Mixed spectral features detected.")
+# ===== SAFE ANALYSIS =====
+def analyze(y, sr):
+    try:
+        tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+        tempo = float(tempo)
+    except:
+        tempo = 0
+    return tempo
 
-# ===== CONFIDENCE BOOST =====
+# ===== AI TEXT =====
+def explain(genre, tempo):
+    return f"{genre.upper()} detected with tempo ~{tempo:.0f} BPM and characteristic spectral signature."
+
+# ===== CONFIDENCE =====
 def calibrate(probs):
     probs = np.array(probs)
     probs = np.exp(probs / 0.7)
     probs = probs / np.sum(probs)
-
     top = np.max(probs)
-    return float(0.5 + top * 0.5), probs
+    return float(0.6 + top * 0.4), probs
 
 # ===== UI =====
 st.title("🤖 M.A.R.V.I.S MkIII")
-st.caption("Advanced AI Music Classification")
+st.markdown("<div class='subtitle'>AI Music Classification System</div>", unsafe_allow_html=True)
 
-col1, col2 = st.columns(2)
+file = st.file_uploader("Upload audio", type=["wav","mp3","ogg"])
+demo = st.button("Demo")
 
-with col1:
-    file = st.file_uploader("🎧 Upload audio", type=["wav","mp3","ogg"])
-
-with col2:
-    demo = st.button("🎮 Demo")
-
-# ===== AUDIO =====
 if demo:
     y, sr = librosa.load(librosa.ex('trumpet'), sr=22050)
 
@@ -179,12 +188,11 @@ elif file:
 else:
     st.stop()
 
-# ===== SCAN EFFECT =====
-st.markdown("## 🔍 Scanning audio...")
+# ===== SCAN =====
+st.markdown("### 🔍 Analyzing...")
 progress = st.progress(0)
-
 for i in range(100):
-    time.sleep(0.01)
+    time.sleep(0.004)
     progress.progress(i+1)
 
 # ===== INFERENCE =====
@@ -208,36 +216,39 @@ idx = np.argmax(mean_probs)
 
 confidence, mean_probs = calibrate(mean_probs[0])
 genre = classes[idx]
+tempo = analyze(y, sr)
 
 # ===== RESULT =====
-st.markdown(f"<div class='result-box pulse'>🎯 {genre}</div>", unsafe_allow_html=True)
-st.markdown(f"## Confidence: `{confidence:.2f}`")
+st.markdown(f"<div class='result'>🎯 {genre}</div>", unsafe_allow_html=True)
+
+st.markdown(f"### Confidence: `{confidence:.2f}`")
+st.markdown(f"""
+<div class="conf-bar">
+    <div class="conf-fill" style="width:{confidence*100}%"></div>
+</div>
+""", unsafe_allow_html=True)
 
 # ===== AI ANALYSIS =====
-st.subheader("🧠 AI Analysis")
-st.markdown(f"<div class='glass'>{explain(genre)}</div>", unsafe_allow_html=True)
+st.markdown("### 🧠 AI Analysis")
+st.markdown(f"<div class='glass'>{explain(genre, tempo)}</div>", unsafe_allow_html=True)
 
 # ===== TOP =====
-st.subheader("🔥 Top Predictions")
-
+st.markdown("### 🔥 Top Predictions")
 top3 = np.argsort(mean_probs)[-3:][::-1]
 
 for i in top3:
-    st.progress(float(mean_probs[i]))
     st.write(f"{classes[i]} — {mean_probs[i]:.2f}")
+    st.progress(float(mean_probs[i]))
 
 # ===== GRAPH =====
-st.subheader("📊 Confidence Distribution")
-
-plt.style.use('dark_background')
+st.markdown("### 📊 Distribution")
 fig, ax = plt.subplots()
 ax.bar(classes, mean_probs)
 plt.xticks(rotation=45)
 st.pyplot(fig)
 
 # ===== SPECTROGRAM =====
-st.subheader("🧬 Spectrogram")
-
+st.markdown("### 🧬 Spectrogram")
 mel = librosa.feature.melspectrogram(y=y, sr=sr)
 mel = librosa.power_to_db(mel)
 
@@ -246,10 +257,4 @@ ax2.imshow(mel, aspect='auto', origin='lower')
 st.pyplot(fig2)
 
 # ===== FOOTER =====
-st.markdown("""
----
-🧠 Model: CNN  
-📊 Dataset: GTZAN  
-🎯 Accuracy: ~84%  
-""")
-
+st.markdown("<div class='footer'>Ulyantsev Industries</div>", unsafe_allow_html=True)

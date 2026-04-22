@@ -277,6 +277,8 @@ st.pyplot(fig2)
 
 # ================== BRAND ==================
 st.markdown("<div class='brand'>Ulyantsev Industries</div>", unsafe_allow_html=True)
+st.markdown("<div class='footer-small'>Advanced AI Systems Division</div>", unsafe_allow_html=True)
+
 
 # ================== FOOTER ==================
 st.markdown("""

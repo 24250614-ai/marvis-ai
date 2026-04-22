@@ -182,7 +182,7 @@ else:
     st.stop()
 
 # ===== ANALYSIS =====
-st.markdown("## 🔍 AI Analysis Pipeline")
+st.markdown("## AI Analysis ...")
 progress = st.progress(0)
 
 for i in range(100):
@@ -224,7 +224,7 @@ confidence = 0.6 * raw_conf + 0.4
 confidence = min(confidence, 0.95)
 
 # ===== RESULT =====
-st.markdown(f"<div class='result-box'>🎯 {genre}</div>", unsafe_allow_html=True)
+st.markdown(f"<div class='result-box'>{genre}</div>", unsafe_allow_html=True)
 
 st.markdown(f"### Confidence: `{confidence:.2f}`")
 st.markdown(f"""
@@ -234,33 +234,73 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ===== TIMELINE =====
-st.subheader("🧭 Segment Analysis")
+st.subheader("Segment Analysis")
 st.markdown(f"<div class='glass'>{' | '.join(timeline)}</div>", unsafe_allow_html=True)
 
 # ===== AI =====
-st.subheader("🧠 AI Reasoning")
+st.subheader("AI Reasoning")
 st.markdown(f"<div class='glass'>{explain(genre)}</div>", unsafe_allow_html=True)
 
 # ===== WAVEFORM =====
 st.subheader("🎧 Waveform")
-fig_w, ax_w = plt.subplots()
-ax_w.plot(y)
+fig_w, ax_w = plt.subplots(figsize=(8,3))
+ax_w.set_facecolor("#02030a")
+fig_w.patch.set_facecolor("#02030a")
+
+ax_w.plot(y, color="#00d5c5", linewidth=1.2)
+
+ax_w.set_xticks([])
+ax_w.set_yticks([])
+for spine in ax_w.spines.values():
+    spine.set_visible(False)
+
 st.pyplot(fig_w)
 
+
 # ===== DISTRIBUTION =====
-st.subheader("📊 Distribution")
-fig, ax = plt.subplots()
-ax.bar(classes, mean_probs)
-plt.xticks(rotation=45)
+st.subheader("Distribution")
+fig, ax = plt.subplots(figsize=(8,4))
+
+fig.patch.set_facecolor("#02030a")
+ax.set_facecolor("#02030a")
+
+# градиентный цвет 
+colors = plt.cm.viridis(mean_probs / max(mean_probs))
+
+bars = ax.bar(classes, mean_probs, color=colors, edgecolor="#111")
+
+ax.set_xticklabels(classes, rotation=45, ha='right', fontsize=9)
+ax.set_yticks([])
+
+for spine in ax.spines.values():
+    spine.set_visible(False)
+
 st.pyplot(fig)
 
-# ===== SPEC =====
+
+# ===== SPECTROGRAM =====
 st.subheader("🧬 Spectrogram")
+
 mel = librosa.feature.melspectrogram(y=y, sr=sr)
 mel = librosa.power_to_db(mel)
 
-fig2, ax2 = plt.subplots()
-ax2.imshow(mel, aspect='auto', origin='lower')
+fig2, ax2 = plt.subplots(figsize=(8,4))
+fig2.patch.set_facecolor("#02030a")
+ax2.set_facecolor("#02030a")
+
+img = ax2.imshow(
+    mel,
+    aspect='auto',
+    origin='lower',
+    cmap='magma' 
+)
+
+ax2.set_xticks([])
+ax2.set_yticks([])
+
+for spine in ax2.spines.values():
+    spine.set_visible(False)
+
 st.pyplot(fig2)
 
 # ===== BRAND =====

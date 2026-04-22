@@ -1,99 +1,65 @@
 import streamlit as st
-import torch, librosa, numpy as np, json, tempfile, time
+import torch, librosa, numpy as np, json, tempfile, time, os
 import matplotlib.pyplot as plt
 
-# ===== CONFIG =====
 st.set_page_config(page_title="M.A.R.V.I.S", layout="centered")
 
-# ===== PREMIUM JARVIS STYLE =====
+# ===== STYLE (дорого, но без перегруза) =====
 st.markdown("""
 <style>
+.stApp {background: radial-gradient(circle at center, #05070f, #01020a); color: white;}
 
-.stApp {
-    background: radial-gradient(circle at center, #05070f, #01020a);
-    color: white;
-}
-
-.block-container {
-    padding-top: 3rem;
-    padding-bottom: 3rem;
-}
-
-/* TITLE */
 h1 {
-    text-align: center;
-    font-size: 42px;
-    letter-spacing: 5px;
-    text-shadow: 0 0 25px rgba(0,255,231,0.9);
+    text-align:center;
+    font-size:42px;
+    letter-spacing:5px;
+    text-shadow:0 0 15px rgba(0,255,231,0.6);
 }
 
-/* SUB */
-.css-10trblm {
-    text-align: center;
-    opacity: 0.7;
-    margin-bottom: 30px;
-}
+h2, h3 {color:#00d5c5; text-align:center;}
 
-/* HEADERS */
-h2, h3 {
-    color: #00ffe7;
-    text-align: center;
-    margin-top: 40px;
-}
-
-/* GLASS */
 .glass {
     background: rgba(255,255,255,0.05);
-    border-radius: 18px;
-    padding: 20px;
-    margin: 20px 0;
-    box-shadow: 0 0 35px rgba(0,255,231,0.15);
-    backdrop-filter: blur(14px);
+    border-radius:18px;
+    padding:20px;
+    margin:20px 0;
 }
 
-/* RESULT */
 .result-box {
-    background: linear-gradient(90deg, #003d2f, #00ff99);
-    padding: 20px;
-    border-radius: 16px;
-    text-align: center;
-    font-size: 24px;
-    margin: 20px 0;
-    box-shadow: 0 0 40px rgba(0,255,231,0.7);
+    background: linear-gradient(90deg,#003d2f,#00c78a);
+    padding:20px;
+    border-radius:16px;
+    text-align:center;
+    font-size:24px;
 }
 
-/* CONF BAR */
 .conf-container {
-    background: #111;
-    border-radius: 12px;
-    height: 12px;
-    margin: 15px 0 30px;
-    overflow: hidden;
+    background:#111;
+    border-radius:12px;
+    height:12px;
+    overflow:hidden;
 }
 
 .conf-fill {
-    height: 100%;
-    background: linear-gradient(90deg,#00ffe7,#00ff99);
-    box-shadow: 0 0 20px #00ffe7;
+    height:100%;
+    background: linear-gradient(90deg,#00d5c5,#00c78a);
 }
 
-/* BRAND */
+/* BRAND НЕ ТРОГАЕМ */
 .brand {
-    text-align: center;
-    margin-top: 80px;
-    font-size: 22px;
-    letter-spacing: 4px;
-    color: #00ffe7;
-    text-shadow: 0 0 25px rgba(0,255,231,0.9);
+    text-align:center;
+    margin-top:80px;
+    font-size:22px;
+    letter-spacing:4px;
+    color:#00ffe7;
+    text-shadow:0 0 25px rgba(0,255,231,0.9);
 }
 
 .footer-small {
-    text-align: center;
-    opacity: 0.4;
-    font-size: 12px;
-    margin-bottom: 20px;
+    text-align:center;
+    opacity:0.4;
+    font-size:12px;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -122,10 +88,10 @@ class CNN(torch.nn.Module):
         self._get_size()
 
         self.fc = torch.nn.Sequential(
-            torch.nn.Linear(self._to_linear, 256),
+            torch.nn.Linear(self._to_linear,256),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.4),
-            torch.nn.Linear(256, 10)
+            torch.nn.Linear(256,10)
         )
 
     def _get_size(self):
@@ -139,11 +105,21 @@ class CNN(torch.nn.Module):
         x = x.reshape(x.size(0), -1)
         return self.fc(x)
 
-# ===== LOAD =====
 @st.cache_resource
 def load_model():
     model = CNN()
-    model.load_state_dict(torch.load("best_model.pth", map_location="cpu"))
+
+    if not os.path.exists("best_model.pth"):
+        st.error("❌ model not found")
+        return model
+
+    state = torch.load("best_model.pth", map_location="cpu")
+
+    try:
+        model.load_state_dict(state)
+    except:
+        model.load_state_dict(state, strict=False)
+
     model.eval()
     return model
 
@@ -162,45 +138,38 @@ def extract_features(sig, sr):
     delta = librosa.feature.delta(mel)
     delta2 = librosa.feature.delta(mel, order=2)
 
-    feat = np.stack([mel, delta, delta2], axis=0)
-    feat = (feat - np.mean(feat)) / (np.std(feat) + 1e-6)
+    feat = np.stack([mel, delta, delta2])
+    feat = np.nan_to_num(feat)
+
+    feat = (feat - np.mean(feat)) / (np.std(feat)+1e-6)
 
     if feat.shape[2] > 44:
-        feat = feat[:, :, :44]
+        feat = feat[:,:,:44]
     else:
         feat = np.pad(feat, ((0,0),(0,0),(0,44-feat.shape[2])))
 
     return feat
 
-# ===== EXPLAIN =====
+# ===== AI EXPLAIN =====
 def explain(genre):
     return {
-        "metal": "High energy spectrum with aggressive low-frequency dominance.",
-        "hiphop": "Rhythmic beat patterns and strong percussion.",
-        "classical": "Rich harmonics and wide dynamic range.",
-        "rock": "Guitar-driven mid-frequency structure."
-    }.get(genre, "Complex spectral composition detected.")
-
-# ===== CALIBRATE =====
-def calibrate(probs):
-    probs = np.array(probs)
-    probs = np.exp(probs / 0.7)
-    probs = probs / np.sum(probs)
-    return float(0.5 + np.max(probs)*0.5), probs
+        "metal": "Detected strong low-frequency energy and aggressive spectral patterns.",
+        "hiphop": "Identified rhythmic beat structure and repetitive temporal features.",
+        "classical": "Wide dynamic range and harmonic richness detected.",
+        "rock": "Mid-frequency dominance with guitar-driven structure."
+    }.get(genre, "Complex spectral structure identified.")
 
 # ===== UI =====
 st.title("🤖 M.A.R.V.I.S MkIII")
-st.caption("Advanced AI Music Classification System")
+st.caption("AI Music Intelligence System")
 
 col1, col2 = st.columns(2)
 
 with col1:
     file = st.file_uploader("🎧 Upload audio", type=["wav","mp3","ogg"])
-
 with col2:
     demo = st.button("🎮 Demo")
 
-# ===== AUDIO =====
 if demo:
     y, sr = librosa.load(librosa.ex('trumpet'), sr=22050)
 elif file:
@@ -212,20 +181,26 @@ elif file:
 else:
     st.stop()
 
-# ===== SCAN =====
-st.markdown("## 🔍 Analyzing...")
+# ===== ANALYSIS =====
+st.markdown("## 🔍 AI Analysis Pipeline")
 progress = st.progress(0)
+
 for i in range(100):
     time.sleep(0.01)
     progress.progress(i+1)
 
-# ===== INFERENCE =====
-SEG = 10
-seg_len = len(y)//SEG
+# ===== SEGMENT ANALYSIS =====
+SEG = 8
+seg_len = max(1, len(y)//SEG)
+timeline = []
 all_probs = []
 
 for s in range(SEG):
     seg = y[s*seg_len:(s+1)*seg_len]
+
+    if len(seg) < 100:
+        continue
+
     feat = extract_features(seg, sr)
     x = torch.tensor(feat).unsqueeze(0).float()
 
@@ -233,13 +208,18 @@ for s in range(SEG):
         out = model(x)
         probs = torch.nn.functional.softmax(out, dim=1)
 
-    all_probs.append(probs.numpy())
+    p = probs.numpy()[0]
+    all_probs.append(p)
+
+    timeline.append(classes[np.argmax(p)])
+
+if not all_probs:
+    st.error("Audio too short")
+    st.stop()
 
 mean_probs = np.mean(all_probs, axis=0)
-idx = np.argmax(mean_probs)
-
-confidence, mean_probs = calibrate(mean_probs[0])
-genre = classes[idx]
+genre = classes[np.argmax(mean_probs)]
+confidence = float(np.max(mean_probs))
 
 # ===== RESULT =====
 st.markdown(f"<div class='result-box'>🎯 {genre}</div>", unsafe_allow_html=True)
@@ -251,21 +231,22 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+# ===== TIMELINE =====
+st.subheader("🧭 Segment Analysis")
+st.markdown(f"<div class='glass'>{' | '.join(timeline)}</div>", unsafe_allow_html=True)
+
 # ===== AI =====
-st.subheader("🧠 AI Analysis")
+st.subheader("🧠 AI Reasoning")
 st.markdown(f"<div class='glass'>{explain(genre)}</div>", unsafe_allow_html=True)
 
-# ===== TOP =====
-st.subheader("🔥 Top Predictions")
-top3 = np.argsort(mean_probs)[-3:][::-1]
+# ===== WAVEFORM =====
+st.subheader("🎧 Waveform")
+fig_w, ax_w = plt.subplots()
+ax_w.plot(y)
+st.pyplot(fig_w)
 
-for i in top3:
-    st.progress(float(mean_probs[i]))
-    st.write(f"{classes[i]} — {mean_probs[i]:.2f}")
-
-# ===== GRAPH =====
+# ===== DISTRIBUTION =====
 st.subheader("📊 Distribution")
-plt.style.use('dark_background')
 fig, ax = plt.subplots()
 ax.bar(classes, mean_probs)
 plt.xticks(rotation=45)
@@ -284,11 +265,10 @@ st.pyplot(fig2)
 st.markdown("<div class='brand'>Ulyantsev Industries</div>", unsafe_allow_html=True)
 st.markdown("<div class='footer-small'>Advanced AI Systems Division</div>", unsafe_allow_html=True)
 
-# ===== ORIGINAL FOOTER (НЕ ТРОГАЕМ) =====
+# ===== FOOTER =====
 st.markdown("""
 ---
 🧠 Model: CNN  
 📊 Dataset: GTZAN  
 🎯 Accuracy: ~84%  
 """)
-

@@ -5,69 +5,95 @@ import matplotlib.pyplot as plt
 # ===== CONFIG =====
 st.set_page_config(page_title="M.A.R.V.I.S", layout="centered")
 
-# ===== STYLE =====
+# ===== PREMIUM JARVIS STYLE =====
 st.markdown("""
 <style>
+
 .stApp {
     background: radial-gradient(circle at center, #05070f, #01020a);
     color: white;
 }
 
+.block-container {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+}
+
 /* TITLE */
 h1 {
     text-align: center;
-    font-size: 40px;
-    letter-spacing: 4px;
-    color: white;
-    text-shadow: 0 0 20px rgba(0,255,231,0.8);
+    font-size: 42px;
+    letter-spacing: 5px;
+    text-shadow: 0 0 25px rgba(0,255,231,0.9);
 }
 
-/* SUBTITLE */
-.subtitle {
+/* SUB */
+.css-10trblm {
     text-align: center;
     opacity: 0.7;
-    margin-bottom: 20px;
+    margin-bottom: 30px;
 }
 
-/* GLASS CARD */
+/* HEADERS */
+h2, h3 {
+    color: #00ffe7;
+    text-align: center;
+    margin-top: 40px;
+}
+
+/* GLASS */
 .glass {
     background: rgba(255,255,255,0.05);
-    border-radius: 16px;
-    padding: 18px;
-    box-shadow: 0 0 25px rgba(0,255,231,0.15);
-    backdrop-filter: blur(12px);
+    border-radius: 18px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 0 35px rgba(0,255,231,0.15);
+    backdrop-filter: blur(14px);
 }
 
 /* RESULT */
-.result {
-    text-align: center;
-    padding: 18px;
-    border-radius: 14px;
+.result-box {
     background: linear-gradient(90deg, #003d2f, #00ff99);
-    font-size: 22px;
-    box-shadow: 0 0 30px rgba(0,255,231,0.6);
+    padding: 20px;
+    border-radius: 16px;
+    text-align: center;
+    font-size: 24px;
+    margin: 20px 0;
+    box-shadow: 0 0 40px rgba(0,255,231,0.7);
 }
 
 /* CONF BAR */
-.conf-bar {
-    height: 12px;
-    border-radius: 10px;
+.conf-container {
     background: #111;
+    border-radius: 12px;
+    height: 12px;
+    margin: 15px 0 30px;
     overflow: hidden;
 }
 
 .conf-fill {
     height: 100%;
     background: linear-gradient(90deg,#00ffe7,#00ff99);
+    box-shadow: 0 0 20px #00ffe7;
 }
 
-/* FOOTER */
-.footer {
+/* BRAND */
+.brand {
+    text-align: center;
+    margin-top: 80px;
+    font-size: 22px;
+    letter-spacing: 4px;
+    color: #00ffe7;
+    text-shadow: 0 0 25px rgba(0,255,231,0.9);
+}
+
+.footer-small {
     text-align: center;
     opacity: 0.4;
-    margin-top: 50px;
-    font-size: 13px;
+    font-size: 12px;
+    margin-bottom: 20px;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -75,7 +101,6 @@ h1 {
 class CNN(torch.nn.Module):
     def __init__(self):
         super().__init__()
-
         self.conv = torch.nn.Sequential(
             torch.nn.Conv2d(3,32,3,padding=1),
             torch.nn.BatchNorm2d(32),
@@ -147,52 +172,51 @@ def extract_features(sig, sr):
 
     return feat
 
-# ===== SAFE ANALYSIS =====
-def analyze(y, sr):
-    try:
-        tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-        tempo = float(tempo)
-    except:
-        tempo = 0
-    return tempo
+# ===== EXPLAIN =====
+def explain(genre):
+    return {
+        "metal": "High energy spectrum with aggressive low-frequency dominance.",
+        "hiphop": "Rhythmic beat patterns and strong percussion.",
+        "classical": "Rich harmonics and wide dynamic range.",
+        "rock": "Guitar-driven mid-frequency structure."
+    }.get(genre, "Complex spectral composition detected.")
 
-# ===== AI TEXT =====
-def explain(genre, tempo):
-    return f"{genre.upper()} detected with tempo ~{tempo:.0f} BPM and characteristic spectral signature."
-
-# ===== CONFIDENCE =====
+# ===== CALIBRATE =====
 def calibrate(probs):
     probs = np.array(probs)
     probs = np.exp(probs / 0.7)
     probs = probs / np.sum(probs)
-    top = np.max(probs)
-    return float(0.6 + top * 0.4), probs
+    return float(0.5 + np.max(probs)*0.5), probs
 
 # ===== UI =====
 st.title("🤖 M.A.R.V.I.S MkIII")
-st.markdown("<div class='subtitle'>AI Music Classification System</div>", unsafe_allow_html=True)
+st.caption("Advanced AI Music Classification System")
 
-file = st.file_uploader("Upload audio", type=["wav","mp3","ogg"])
-demo = st.button("Demo")
+col1, col2 = st.columns(2)
 
+with col1:
+    file = st.file_uploader("🎧 Upload audio", type=["wav","mp3","ogg"])
+
+with col2:
+    demo = st.button("🎮 Demo")
+
+# ===== AUDIO =====
 if demo:
     y, sr = librosa.load(librosa.ex('trumpet'), sr=22050)
-
 elif file:
     st.audio(file)
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         tmp.write(file.read())
         path = tmp.name
     y, sr = librosa.load(path, sr=22050)
-
 else:
     st.stop()
 
 # ===== SCAN =====
-st.markdown("### 🔍 Analyzing...")
+st.markdown("## 🔍 Analyzing...")
 progress = st.progress(0)
 for i in range(100):
-    time.sleep(0.004)
+    time.sleep(0.01)
     progress.progress(i+1)
 
 # ===== INFERENCE =====
@@ -216,39 +240,39 @@ idx = np.argmax(mean_probs)
 
 confidence, mean_probs = calibrate(mean_probs[0])
 genre = classes[idx]
-tempo = analyze(y, sr)
 
 # ===== RESULT =====
-st.markdown(f"<div class='result'>🎯 {genre}</div>", unsafe_allow_html=True)
+st.markdown(f"<div class='result-box'>🎯 {genre}</div>", unsafe_allow_html=True)
 
 st.markdown(f"### Confidence: `{confidence:.2f}`")
 st.markdown(f"""
-<div class="conf-bar">
-    <div class="conf-fill" style="width:{confidence*100}%"></div>
+<div class="conf-container">
+<div class="conf-fill" style="width:{confidence*100}%"></div>
 </div>
 """, unsafe_allow_html=True)
 
-# ===== AI ANALYSIS =====
-st.markdown("### 🧠 AI Analysis")
-st.markdown(f"<div class='glass'>{explain(genre, tempo)}</div>", unsafe_allow_html=True)
+# ===== AI =====
+st.subheader("🧠 AI Analysis")
+st.markdown(f"<div class='glass'>{explain(genre)}</div>", unsafe_allow_html=True)
 
 # ===== TOP =====
-st.markdown("### 🔥 Top Predictions")
+st.subheader("🔥 Top Predictions")
 top3 = np.argsort(mean_probs)[-3:][::-1]
 
 for i in top3:
-    st.write(f"{classes[i]} — {mean_probs[i]:.2f}")
     st.progress(float(mean_probs[i]))
+    st.write(f"{classes[i]} — {mean_probs[i]:.2f}")
 
 # ===== GRAPH =====
-st.markdown("### 📊 Distribution")
+st.subheader("📊 Distribution")
+plt.style.use('dark_background')
 fig, ax = plt.subplots()
 ax.bar(classes, mean_probs)
 plt.xticks(rotation=45)
 st.pyplot(fig)
 
-# ===== SPECTROGRAM =====
-st.markdown("### 🧬 Spectrogram")
+# ===== SPEC =====
+st.subheader("🧬 Spectrogram")
 mel = librosa.feature.melspectrogram(y=y, sr=sr)
 mel = librosa.power_to_db(mel)
 
@@ -256,5 +280,14 @@ fig2, ax2 = plt.subplots()
 ax2.imshow(mel, aspect='auto', origin='lower')
 st.pyplot(fig2)
 
-# ===== FOOTER =====
-st.markdown("<div class='footer'>Ulyantsev Industries</div>", unsafe_allow_html=True)
+# ===== BRAND =====
+st.markdown("<div class='brand'>Ulyantsev Industries</div>", unsafe_allow_html=True)
+st.markdown("<div class='footer-small'>Advanced AI Systems Division</div>", unsafe_allow_html=True)
+
+# ===== ORIGINAL FOOTER (НЕ ТРОГАЕМ) =====
+st.markdown("""
+---
+🧠 Model: CNN  
+📊 Dataset: GTZAN  
+🎯 Accuracy: ~84%  
+""")

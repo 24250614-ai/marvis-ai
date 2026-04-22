@@ -258,7 +258,7 @@ st.pyplot(fig_w)
 
 
 # ===== DISTRIBUTION =====
-st.subheader("📊 Distribution")
+st.subheader("Distribution")
 fig, ax = plt.subplots(figsize=(8,4))
 
 fig.patch.set_facecolor("#02030a")
@@ -278,21 +278,8 @@ ax.tick_params(axis='x', colors="#cfeeee")
 for spine in ax.spines.values():
     spine.set_visible(False)
 
-# мягкая сетка (дорого выглядит)
+# мягкая сетка
 ax.grid(axis='y', linestyle='--', alpha=0.15, color='#00d5c5')
-
-st.pyplot(fig)
-
-# градиентный цвет 
-colors = plt.cm.viridis(mean_probs / max(mean_probs))
-
-bars = ax.bar(classes, mean_probs, color=colors, edgecolor="#111")
-
-ax.set_xticklabels(classes, rotation=45, ha='right', fontsize=9)
-ax.set_yticks([])
-
-for spine in ax.spines.values():
-    spine.set_visible(False)
 
 st.pyplot(fig)
 

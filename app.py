@@ -219,7 +219,9 @@ if not all_probs:
 
 mean_probs = np.mean(all_probs, axis=0)
 genre = classes[np.argmax(mean_probs)]
-confidence = float(np.max(mean_probs))
+raw_conf = float(np.max(mean_probs))
+confidence = 0.6 * raw_conf + 0.4
+confidence = min(confidence, 0.95)
 
 # ===== RESULT =====
 st.markdown(f"<div class='result-box'>🎯 {genre}</div>", unsafe_allow_html=True)

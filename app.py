@@ -2,55 +2,55 @@ import streamlit as st
 import torch, librosa, numpy as np, json, tempfile, time
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="M.A.R.V.I.S", layout="centered")
+st.set_page_config(page_title="M.A.R.V.I.S ULTRA", layout="centered")
 
-# ================== STYLE ==================
+# ================== ULTRA STYLE ==================
 st.markdown("""
 <style>
 .stApp {
-    background: radial-gradient(circle at center, #05070f, #01020a);
+    background: radial-gradient(circle at center, #04060d, #000000);
     color: white;
 }
 
 h1 {
     text-align: center;
-    font-size: 44px;
+    font-size: 46px;
     letter-spacing: 6px;
-    text-shadow: 0 0 30px #00ffe7;
+    text-shadow: 0 0 35px #00ffe7;
 }
 
 .glass {
-    background: rgba(255,255,255,0.05);
-    border-radius: 18px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 20px;
     padding: 20px;
     margin: 20px 0;
-    box-shadow: 0 0 35px rgba(0,255,231,0.2);
-    backdrop-filter: blur(14px);
+    box-shadow: 0 0 40px rgba(0,255,231,0.2);
+    backdrop-filter: blur(16px);
 }
 
-.result-box {
-    background: linear-gradient(90deg,#003d2f,#00ff99);
+.result {
+    background: linear-gradient(90deg,#002f24,#00ff99);
     padding: 20px;
-    border-radius: 16px;
+    border-radius: 18px;
     text-align: center;
-    font-size: 26px;
-    box-shadow: 0 0 50px rgba(0,255,231,0.8);
+    font-size: 28px;
+    box-shadow: 0 0 60px rgba(0,255,231,0.9);
 }
 
 .bar {
     height: 8px;
     border-radius: 10px;
     background: linear-gradient(90deg,#00ffe7,#00ff99);
-    box-shadow: 0 0 15px #00ffe7;
+    box-shadow: 0 0 20px #00ffe7;
 }
 
 .brand {
     text-align:center;
     margin-top:80px;
-    font-size:24px;
-    letter-spacing:5px;
+    font-size:26px;
+    letter-spacing:6px;
     color:#00ffe7;
-    text-shadow:0 0 25px #00ffe7;
+    text-shadow:0 0 30px #00ffe7;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -125,6 +125,14 @@ def extract_features(sig, sr):
 
     return feat
 
+def explain(genre):
+    return {
+        "metal": "Aggressive low frequencies and dense spectral energy.",
+        "hiphop": "Strong rhythmic beats and repetitive patterns.",
+        "classical": "Wide dynamic range with harmonic richness.",
+        "rock": "Mid-frequency guitar dominance."
+    }.get(genre, "Complex spectral structure detected.")
+
 # ================== UI ==================
 st.title("🤖 M.A.R.V.I.S MkIII")
 st.caption("AI Music Intelligence System")
@@ -143,14 +151,20 @@ elif file:
 else:
     st.stop()
 
-# ================== SCAN ==================
+# ================== FAKE REALTIME ==================
 st.markdown("## 🔍 SYSTEM ANALYSIS")
 progress = st.progress(0)
+status = st.empty()
+
+steps = ["Loading model", "Extracting features", "Analyzing spectrum", "Running neural network"]
+
 for i in range(100):
+    if i % 25 == 0:
+        status.write(steps[i//25])
     time.sleep(0.01)
     progress.progress(i+1)
 
-# ================== SEGMENT ANALYSIS ==================
+# ================== INFERENCE ==================
 SEG = 8
 seg_len = len(y)//SEG
 timeline = []
@@ -177,20 +191,21 @@ genre = classes[idx]
 confidence = float(np.max(mean_probs))
 
 # ================== RESULT ==================
-st.markdown(f"<div class='result-box'>🎯 {genre}</div>", unsafe_allow_html=True)
+st.markdown(f"<div class='result'>🎯 {genre}</div>", unsafe_allow_html=True)
 
 st.write(f"Confidence: {confidence:.2f}")
 st.markdown(f"<div class='bar' style='width:{confidence*100}%'></div>", unsafe_allow_html=True)
 
-# ================== TIMELINE ==================
-st.subheader("🧭 Timeline Analysis")
+# ================== EXPLAIN ==================
+st.subheader("🧠 AI Explanation")
+st.markdown(f"<div class='glass'>{explain(genre)}</div>", unsafe_allow_html=True)
 
-timeline_str = " | ".join(timeline)
-st.markdown(f"<div class='glass'>{timeline_str}</div>", unsafe_allow_html=True)
+# ================== TIMELINE ==================
+st.subheader("🧭 Timeline")
+st.markdown(f"<div class='glass'>{' | '.join(timeline)}</div>", unsafe_allow_html=True)
 
 # ================== FEATURES ==================
 st.subheader("📡 Audio Features")
-
 tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
 energy = np.mean(np.abs(y))
 
@@ -209,25 +224,28 @@ for i in top3:
     st.write(classes[i])
     st.markdown(f"<div class='bar' style='width:{mean_probs[i]*100}%'></div>", unsafe_allow_html=True)
 
-# ================== GRAPH ==================
-st.subheader("📊 Genre Distribution")
+# ================== WAVEFORM ==================
+st.subheader("🎧 Waveform")
+fig_w, ax_w = plt.subplots()
+ax_w.plot(y)
+ax_w.set_facecolor("#000")
+st.pyplot(fig_w)
 
+# ================== DISTR ==================
+st.subheader("📊 Distribution")
 plt.style.use('dark_background')
 fig, ax = plt.subplots()
 ax.bar(classes, mean_probs)
-ax.set_facecolor("#01020a")
 plt.xticks(rotation=45)
 st.pyplot(fig)
 
 # ================== SPEC ==================
 st.subheader("🧬 Spectrogram")
-
 mel = librosa.feature.melspectrogram(y=y, sr=sr)
 mel = librosa.power_to_db(mel)
 
 fig2, ax2 = plt.subplots()
 ax2.imshow(mel, aspect='auto', origin='lower')
-ax2.set_facecolor("#01020a")
 st.pyplot(fig2)
 
 # ================== BRAND ==================

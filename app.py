@@ -258,11 +258,30 @@ st.pyplot(fig_w)
 
 
 # ===== DISTRIBUTION =====
-st.subheader("Distribution")
+st.subheader("📊 Distribution")
 fig, ax = plt.subplots(figsize=(8,4))
 
 fig.patch.set_facecolor("#02030a")
 ax.set_facecolor("#02030a")
+
+# градиент
+colors = plt.cm.viridis(mean_probs / max(mean_probs))
+ax.bar(classes, mean_probs, color=colors)
+
+ax.set_xticks(range(len(classes)))
+ax.set_xticklabels(classes, rotation=45, ha='right', fontsize=9, color="#cfeeee")
+
+ax.tick_params(axis='y', colors="#9fbcbc")
+ax.tick_params(axis='x', colors="#cfeeee")
+
+# убираем рамки
+for spine in ax.spines.values():
+    spine.set_visible(False)
+
+# мягкая сетка (дорого выглядит)
+ax.grid(axis='y', linestyle='--', alpha=0.15, color='#00d5c5')
+
+st.pyplot(fig)
 
 # градиентный цвет 
 colors = plt.cm.viridis(mean_probs / max(mean_probs))

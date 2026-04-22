@@ -182,7 +182,7 @@ else:
     st.stop()
 
 # ===== ANALYSIS =====
-st.markdown("##🔍 AI Analysis ...")
+st.markdown("## 🔍 AI Analysis ...")
 progress = st.progress(0)
 
 for i in range(100):

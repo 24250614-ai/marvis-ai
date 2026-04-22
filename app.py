@@ -1,20 +1,28 @@
 import streamlit as st
 import torch, librosa, numpy as np, json, tempfile, time, os
 import matplotlib.pyplot as plt
-import random
 
-st.set_page_config(page_title="M.A.R.V.I.S ULTRA", layout="centered")
+# ===== CONFIG =====
+st.set_page_config(page_title="M.A.R.V.I.S", layout="centered")
 
-# ===== ULTRA STYLE =====
+# ===== STYLE (чуть мягче, меньше неона) =====
 st.markdown("""
 <style>
-.stApp {background: radial-gradient(circle at center, #05070f, #01020a); color: white;}
+.stApp {
+    background: radial-gradient(circle at center, #05070f, #01020a);
+    color: white;
+}
 
 h1 {
     text-align: center;
-    font-size: 44px;
-    letter-spacing: 6px;
-    text-shadow: 0 0 30px #00ffe7;
+    font-size: 42px;
+    letter-spacing: 5px;
+    text-shadow: 0 0 15px rgba(0,255,231,0.6);
+}
+
+h2, h3 {
+    color: #00d5c5;
+    text-align: center;
 }
 
 .glass {
@@ -22,17 +30,17 @@ h1 {
     border-radius: 18px;
     padding: 20px;
     margin: 20px 0;
-    box-shadow: 0 0 35px rgba(0,255,231,0.15);
+    box-shadow: 0 0 20px rgba(0,255,231,0.1);
 }
 
 .result-box {
-    background: linear-gradient(90deg, #003d2f, #00ff99);
+    background: linear-gradient(90deg, #003d2f, #00c78a);
     padding: 20px;
     border-radius: 16px;
     text-align: center;
-    font-size: 26px;
+    font-size: 24px;
     margin: 20px 0;
-    box-shadow: 0 0 60px rgba(0,255,231,0.9);
+    box-shadow: 0 0 25px rgba(0,255,231,0.4);
 }
 
 .conf-container {
@@ -45,22 +53,10 @@ h1 {
 
 .conf-fill {
     height: 100%;
-    background: linear-gradient(90deg,#00ffe7,#00ff99);
-    box-shadow: 0 0 25px #00ffe7;
+    background: linear-gradient(90deg,#00d5c5,#00c78a);
 }
 
-/* HUD scan */
-.scan {
-    text-align:center;
-    color:#00ffe7;
-    animation: blink 1.2s infinite;
-}
-@keyframes blink {
-    0%{opacity:1;}
-    50%{opacity:0.2;}
-    100%{opacity:1;}
-}
-
+/* BRAND НЕ ТРОГАЕМ */
 .brand {
     text-align: center;
     margin-top: 80px;
@@ -103,10 +99,10 @@ class CNN(torch.nn.Module):
         self._get_size()
 
         self.fc = torch.nn.Sequential(
-            torch.nn.Linear(self._to_linear,256),
+            torch.nn.Linear(self._to_linear, 256),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.4),
-            torch.nn.Linear(256,10)
+            torch.nn.Linear(256, 10)
         )
 
     def _get_size(self):
@@ -124,14 +120,18 @@ class CNN(torch.nn.Module):
 @st.cache_resource
 def load_model():
     model = CNN()
+
     if not os.path.exists("best_model.pth"):
-        st.error("❌ model missing")
+        st.error("❌ best_model.pth not found")
         return model
+
     state = torch.load("best_model.pth", map_location="cpu")
+
     try:
         model.load_state_dict(state)
     except:
         model.load_state_dict(state, strict=False)
+
     model.eval()
     return model
 
@@ -152,6 +152,7 @@ def extract_features(sig, sr):
 
     feat = np.stack([mel, delta, delta2])
     feat = np.nan_to_num(feat)
+
     feat = (feat - np.mean(feat)) / (np.std(feat)+1e-6)
 
     if feat.shape[2] > 44:
@@ -161,23 +162,27 @@ def extract_features(sig, sr):
 
     return feat
 
-# ===== AI REASONING =====
-def ai_reasoning():
-    phrases = [
-        "Spectral density matches genre profile",
-        "Frequency distribution aligns with training patterns",
-        "Temporal features confirm classification",
-        "Confidence boosted by harmonic structure"
-    ]
-    return random.choice(phrases)
+# ===== EXPLAIN =====
+def explain(genre):
+    return {
+        "metal": "High energy spectrum and low-frequency dominance.",
+        "hiphop": "Rhythmic beats and structured patterns.",
+        "classical": "Wide dynamics and harmonic richness.",
+        "rock": "Strong mid-frequency guitar presence."
+    }.get(genre, "Complex spectral structure detected.")
 
 # ===== UI =====
 st.title("🤖 M.A.R.V.I.S MkIII")
-st.caption("AI Music Intelligence System")
+st.caption("AI Music Classification System")
 
-file = st.file_uploader("🎧 Upload audio", type=["wav","mp3"])
-demo = st.button("🎮 Demo")
+col1, col2 = st.columns(2)
 
+with col1:
+    file = st.file_uploader("🎧 Upload audio", type=["wav","mp3","ogg"])
+with col2:
+    demo = st.button("🎮 Demo")
+
+# ===== AUDIO =====
 if demo:
     y, sr = librosa.load(librosa.ex('trumpet'), sr=22050)
 elif file:
@@ -189,9 +194,8 @@ elif file:
 else:
     st.stop()
 
-# ===== HUD ANALYSIS =====
-st.markdown("<div class='scan'>🔍 SYSTEM SCANNING...</div>", unsafe_allow_html=True)
-
+# ===== SCAN =====
+st.markdown("## 🔍 Analyzing...")
 progress = st.progress(0)
 for i in range(100):
     time.sleep(0.01)
@@ -199,11 +203,12 @@ for i in range(100):
 
 # ===== INFERENCE =====
 SEG = 10
-seg_len = max(1,len(y)//SEG)
+seg_len = max(1, len(y)//SEG)
 all_probs = []
 
 for s in range(SEG):
     seg = y[s*seg_len:(s+1)*seg_len]
+
     if len(seg) < 100:
         continue
 
@@ -217,7 +222,7 @@ for s in range(SEG):
     all_probs.append(probs.numpy()[0])
 
 if not all_probs:
-    st.error("Audio too short")
+    st.error("❌ Audio too short")
     st.stop()
 
 mean_probs = np.mean(all_probs, axis=0)
@@ -235,33 +240,42 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ===== AI BLOCK =====
-st.subheader("🧠 AI Reasoning")
-st.markdown(f"<div class='glass'>{ai_reasoning()}</div>", unsafe_allow_html=True)
+# ===== AI =====
+st.subheader("🧠 AI Analysis")
+st.markdown(f"<div class='glass'>{explain(genre)}</div>", unsafe_allow_html=True)
+
+# ===== TOP =====
+st.subheader("🔥 Top Predictions")
+top3 = np.argsort(mean_probs)[-3:][::-1]
+
+for i in top3:
+    st.write(f"{classes[i]} — {mean_probs[i]:.2f}")
+    st.progress(float(mean_probs[i]))
 
 # ===== WAVEFORM =====
 st.subheader("🎧 Waveform")
-plt.style.use("dark_background")
-fig, ax = plt.subplots()
-ax.plot(y, color="#00ffe7")
-st.pyplot(fig)
+plt.style.use("default")
+fig_w, ax_w = plt.subplots()
+ax_w.plot(y)
+st.pyplot(fig_w)
 
 # ===== DISTRIBUTION =====
 st.subheader("📊 Distribution")
-fig2, ax2 = plt.subplots()
-ax2.bar(classes, mean_probs, color="#00ffe7")
+fig, ax = plt.subplots()
+ax.bar(classes, mean_probs)
 plt.xticks(rotation=45)
-st.pyplot(fig2)
+st.pyplot(fig)
 
 # ===== SPEC =====
 st.subheader("🧬 Spectrogram")
 mel = librosa.feature.melspectrogram(y=y, sr=sr)
 mel = librosa.power_to_db(mel)
-fig3, ax3 = plt.subplots()
-ax3.imshow(mel, aspect='auto', origin='lower', cmap='viridis')
-st.pyplot(fig3)
 
-# ===== BRAND (НЕ ТРОГАЛ) =====
+fig2, ax2 = plt.subplots()
+ax2.imshow(mel, aspect='auto', origin='lower')
+st.pyplot(fig2)
+
+# ===== BRAND =====
 st.markdown("<div class='brand'>Ulyantsev Industries</div>", unsafe_allow_html=True)
 st.markdown("<div class='footer-small'>Advanced AI Systems Division</div>", unsafe_allow_html=True)
 

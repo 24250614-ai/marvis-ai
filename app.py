@@ -8,49 +8,62 @@ st.set_page_config(page_title="M.A.R.V.I.S ULTRA", layout="centered")
 st.markdown("""
 <style>
 .stApp {
-    background: radial-gradient(circle at center, #04060d, #000000);
+    background: radial-gradient(circle at center, #02030a, #000000);
     color: white;
 }
 
+/* TITLE */
 h1 {
     text-align: center;
-    font-size: 46px;
-    letter-spacing: 6px;
-    text-shadow: 0 0 35px #00ffe7;
+    font-size: 52px;
+    letter-spacing: 8px;
+    text-shadow: 0 0 40px #00ffe7, 0 0 80px #00ffe7;
 }
 
+/* GLASS */
 .glass {
-    background: rgba(255,255,255,0.04);
+    background: rgba(255,255,255,0.03);
     border-radius: 20px;
     padding: 20px;
     margin: 20px 0;
-    box-shadow: 0 0 40px rgba(0,255,231,0.2);
-    backdrop-filter: blur(16px);
+    box-shadow: 0 0 40px rgba(0,255,231,0.15);
+    backdrop-filter: blur(20px);
 }
 
+/* RESULT */
 .result {
     background: linear-gradient(90deg,#002f24,#00ff99);
-    padding: 20px;
-    border-radius: 18px;
+    padding: 22px;
+    border-radius: 20px;
     text-align: center;
-    font-size: 28px;
-    box-shadow: 0 0 60px rgba(0,255,231,0.9);
+    font-size: 32px;
+    box-shadow: 0 0 80px rgba(0,255,231,1);
+    animation: pulse 2s infinite;
 }
 
+/* PROGRESS BAR */
 .bar {
-    height: 8px;
+    height: 10px;
     border-radius: 10px;
     background: linear-gradient(90deg,#00ffe7,#00ff99);
-    box-shadow: 0 0 20px #00ffe7;
+    box-shadow: 0 0 25px #00ffe7;
 }
 
+/* BRAND */
 .brand {
     text-align:center;
-    margin-top:80px;
-    font-size:26px;
-    letter-spacing:6px;
+    margin-top:100px;
+    font-size:30px;
+    letter-spacing:8px;
     color:#00ffe7;
-    text-shadow:0 0 30px #00ffe7;
+    text-shadow:0 0 40px #00ffe7;
+}
+
+/* ANIMATION */
+@keyframes pulse {
+    0% {box-shadow: 0 0 40px #00ffe7;}
+    50% {box-shadow: 0 0 100px #00ffe7;}
+    100% {box-shadow: 0 0 40px #00ffe7;}
 }
 </style>
 """, unsafe_allow_html=True)
@@ -135,7 +148,7 @@ def explain(genre):
 
 # ================== UI ==================
 st.title("🤖 M.A.R.V.I.S MkIII")
-st.caption("AI Music Intelligence System")
+st.caption("Advanced AI Music Intelligence System")
 
 file = st.file_uploader("🎧 Upload audio", type=["wav","mp3"])
 demo = st.button("🎮 Demo")
@@ -151,12 +164,12 @@ elif file:
 else:
     st.stop()
 
-# ================== FAKE REALTIME ==================
+# ================== ANALYSIS EFFECT ==================
 st.markdown("## 🔍 SYSTEM ANALYSIS")
 progress = st.progress(0)
 status = st.empty()
 
-steps = ["Loading model", "Extracting features", "Analyzing spectrum", "Running neural network"]
+steps = ["Initializing AI core", "Extracting features", "Scanning spectrum", "Running neural network"]
 
 for i in range(100):
     if i % 25 == 0:
@@ -204,17 +217,29 @@ st.markdown(f"<div class='glass'>{explain(genre)}</div>", unsafe_allow_html=True
 st.subheader("🧭 Timeline")
 st.markdown(f"<div class='glass'>{' | '.join(timeline)}</div>", unsafe_allow_html=True)
 
-# ================== FEATURES ==================
+# ================== FEATURES (FIXED) ==================
 st.subheader("📡 Audio Features")
-tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-energy = np.mean(np.abs(y))
 
-st.markdown(f"""
-<div class='glass'>
-Tempo: {tempo:.0f} BPM<br>
-Energy: {energy:.3f}
-</div>
-""", unsafe_allow_html=True)
+try:
+    tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+
+    if isinstance(tempo, (np.ndarray, list)):
+        tempo = float(tempo[0])
+    else:
+        tempo = float(tempo)
+
+    energy = float(np.mean(np.abs(y)))
+
+    st.markdown(f"""
+    <div class='glass'>
+    ⚡ Tempo: {tempo:.0f} BPM<br>
+    🔋 Energy: {energy:.3f}<br>
+    ⏱ Length: {len(y)/sr:.1f} sec
+    </div>
+    """, unsafe_allow_html=True)
+
+except:
+    st.warning("⚠️ Feature extraction failed")
 
 # ================== TOP ==================
 st.subheader("🔥 Top Predictions")
@@ -224,28 +249,30 @@ for i in top3:
     st.write(classes[i])
     st.markdown(f"<div class='bar' style='width:{mean_probs[i]*100}%'></div>", unsafe_allow_html=True)
 
-# ================== WAVEFORM ==================
+# ================== VISUALS ==================
+plt.style.use("dark_background")
+
+# Waveform
 st.subheader("🎧 Waveform")
 fig_w, ax_w = plt.subplots()
-ax_w.plot(y)
+ax_w.plot(y, color="#00ffe7")
 ax_w.set_facecolor("#000")
 st.pyplot(fig_w)
 
-# ================== DISTR ==================
+# Distribution
 st.subheader("📊 Distribution")
-plt.style.use('dark_background')
 fig, ax = plt.subplots()
-ax.bar(classes, mean_probs)
+ax.bar(classes, mean_probs, color="#00ffe7")
 plt.xticks(rotation=45)
 st.pyplot(fig)
 
-# ================== SPEC ==================
+# Spectrogram
 st.subheader("🧬 Spectrogram")
 mel = librosa.feature.melspectrogram(y=y, sr=sr)
 mel = librosa.power_to_db(mel)
 
 fig2, ax2 = plt.subplots()
-ax2.imshow(mel, aspect='auto', origin='lower')
+ax2.imshow(mel, aspect='auto', origin='lower', cmap='viridis')
 st.pyplot(fig2)
 
 # ================== BRAND ==================
